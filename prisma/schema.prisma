@@ -13,10 +13,10 @@ model User {
   name          String?
   emailVerified DateTime?
   image         String?
+  createdAt     DateTime     @default(now())
   accounts      Account[]
   sessions      Session[]
   tournaments   Tournament[]
-  createdAt     DateTime     @default(now())
 }
 
 model Account {
@@ -53,62 +53,42 @@ model VerificationToken {
   @@unique([identifier, token])
 }
 
-enum TournamentStatus {
-  SETUP
-  REGISTERING
-  RUNNING
-  PAUSED
-  BREAK
-  COMPLETE
-}
-
 model Tournament {
-  id     String           @id @default(cuid())
-  slug   String           @unique
-  hostId String
-  host   User             @relation(fields: [hostId], references: [id])
-  name   String
-  status TournamentStatus @default(SETUP)
-
-  // Buy-in config
-  buyInAmount     Int
-  rebuyAmount     Int?
-  rebuyDeadline   Int?
-  addOnAmount     Int?
-  addOnBreakLevel Int?
-  lateRegLevels   Int @default(0)
-
-  // Clock state (server-authoritative)
-  currentLevelIndex      Int     @default(0)
+  id                     String           @id @default(cuid())
+  slug                   String           @unique
+  hostId                 String
+  name                   String
+  status                 TournamentStatus @default(SETUP)
+  buyInAmount            Int
+  rebuyAmount            Int?
+  rebuyDeadline          Int?
+  addOnAmount            Int?
+  addOnBreakLevel        Int?
+  lateRegLevels          Int              @default(0)
+  currentLevelIndex      Int              @default(0)
   levelStartedAt         BigInt?
-  isPaused               Boolean @default(false)
+  isPaused               Boolean          @default(false)
   pausedSecondsRemaining Int?
-
-  // Financials
-  prizePool    Int @default(0)
-  totalEntries Int @default(0)
-  totalRebuys  Int @default(0)
-  totalAddOns  Int @default(0)
-
-  // Payout
-  payoutStructure Json?
-  chopDeal        Json?
-
-  startedAt   DateTime?
-  completedAt DateTime?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-
-  blindLevels BlindLevel[]
-  players     Player[]
-  tables      Table[]
-  actionLogs  ActionLog[]
+  prizePool              Int              @default(0)
+  totalEntries           Int              @default(0)
+  totalRebuys            Int              @default(0)
+  totalAddOns            Int              @default(0)
+  payoutStructure        Json?
+  chopDeal               Json?
+  startedAt              DateTime?
+  completedAt            DateTime?
+  createdAt              DateTime         @default(now())
+  updatedAt              DateTime         @updatedAt
+  actionLogs             ActionLog[]
+  blindLevels            BlindLevel[]
+  players                Player[]
+  tables                 Table[]
+  host                   User             @relation(fields: [hostId], references: [id])
 }
 
 model BlindLevel {
   id              String     @id @default(cuid())
   tournamentId    String
-  tournament      Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
   levelIndex      Int
   isBreak         Boolean    @default(false)
   smallBlind      Int?
@@ -116,22 +96,15 @@ model BlindLevel {
   ante            Int?
   durationMinutes Int
   label           String?
+  tournament      Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
 
   @@unique([tournamentId, levelIndex])
-}
-
-enum PlayerStatus {
-  ACTIVE
-  ELIMINATED
-  SITTING_OUT
 }
 
 model Player {
   id             String       @id @default(cuid())
   tournamentId   String
-  tournament     Tournament   @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
   tableId        String?
-  table          Table?       @relation(fields: [tableId], references: [id])
   seatNumber     Int?
   name           String
   status         PlayerStatus @default(ACTIVE)
@@ -142,33 +115,50 @@ model Player {
   payoutAmount   Int?
   registeredAt   DateTime     @default(now())
   eliminatedAt   DateTime?
-}
-
-enum TableStatus {
-  ACTIVE
-  BREAKING
+  table          Table?       @relation(fields: [tableId], references: [id])
+  tournament     Tournament   @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
 }
 
 model Table {
   id           String      @id @default(cuid())
   tournamentId String
-  tournament   Tournament  @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
   tableNumber  Int
   status       TableStatus @default(ACTIVE)
   maxSeats     Int         @default(9)
   players      Player[]
+  tournament   Tournament  @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
 }
 
 model ActionLog {
   id           String     @id @default(cuid())
   tournamentId String
-  tournament   Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
   sequence     Int
   actionType   String
   payload      Json
   reversedBy   Int?
   createdAt    DateTime   @default(now())
+  tournament   Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
 
   @@unique([tournamentId, sequence])
   @@index([tournamentId, sequence])
+}
+
+enum TournamentStatus {
+  SETUP
+  REGISTERING
+  RUNNING
+  PAUSED
+  BREAK
+  COMPLETE
+}
+
+enum PlayerStatus {
+  ACTIVE
+  ELIMINATED
+  SITTING_OUT
+}
+
+enum TableStatus {
+  ACTIVE
+  BREAKING
 }
