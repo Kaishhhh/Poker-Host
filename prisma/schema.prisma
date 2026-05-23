@@ -1,0 +1,174 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id            String       @id @default(cuid())
+  email         String       @unique
+  name          String?
+  emailVerified DateTime?
+  image         String?
+  accounts      Account[]
+  sessions      Session[]
+  tournaments   Tournament[]
+  createdAt     DateTime     @default(now())
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+enum TournamentStatus {
+  SETUP
+  REGISTERING
+  RUNNING
+  PAUSED
+  BREAK
+  COMPLETE
+}
+
+model Tournament {
+  id     String           @id @default(cuid())
+  slug   String           @unique
+  hostId String
+  host   User             @relation(fields: [hostId], references: [id])
+  name   String
+  status TournamentStatus @default(SETUP)
+
+  // Buy-in config
+  buyInAmount     Int
+  rebuyAmount     Int?
+  rebuyDeadline   Int?
+  addOnAmount     Int?
+  addOnBreakLevel Int?
+  lateRegLevels   Int @default(0)
+
+  // Clock state (server-authoritative)
+  currentLevelIndex      Int     @default(0)
+  levelStartedAt         BigInt?
+  isPaused               Boolean @default(false)
+  pausedSecondsRemaining Int?
+
+  // Financials
+  prizePool    Int @default(0)
+  totalEntries Int @default(0)
+  totalRebuys  Int @default(0)
+  totalAddOns  Int @default(0)
+
+  // Payout
+  payoutStructure Json?
+  chopDeal        Json?
+
+  startedAt   DateTime?
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  blindLevels BlindLevel[]
+  players     Player[]
+  tables      Table[]
+  actionLogs  ActionLog[]
+}
+
+model BlindLevel {
+  id              String     @id @default(cuid())
+  tournamentId    String
+  tournament      Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  levelIndex      Int
+  isBreak         Boolean    @default(false)
+  smallBlind      Int?
+  bigBlind        Int?
+  ante            Int?
+  durationMinutes Int
+  label           String?
+
+  @@unique([tournamentId, levelIndex])
+}
+
+enum PlayerStatus {
+  ACTIVE
+  ELIMINATED
+  SITTING_OUT
+}
+
+model Player {
+  id             String       @id @default(cuid())
+  tournamentId   String
+  tournament     Tournament   @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  tableId        String?
+  table          Table?       @relation(fields: [tableId], references: [id])
+  seatNumber     Int?
+  name           String
+  status         PlayerStatus @default(ACTIVE)
+  chipCount      Int?
+  rebuys         Int          @default(0)
+  addOns         Int          @default(0)
+  finishPosition Int?
+  payoutAmount   Int?
+  registeredAt   DateTime     @default(now())
+  eliminatedAt   DateTime?
+}
+
+enum TableStatus {
+  ACTIVE
+  BREAKING
+}
+
+model Table {
+  id           String      @id @default(cuid())
+  tournamentId String
+  tournament   Tournament  @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  tableNumber  Int
+  status       TableStatus @default(ACTIVE)
+  maxSeats     Int         @default(9)
+  players      Player[]
+}
+
+model ActionLog {
+  id           String     @id @default(cuid())
+  tournamentId String
+  tournament   Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  sequence     Int
+  actionType   String
+  payload      Json
+  reversedBy   Int?
+  createdAt    DateTime   @default(now())
+
+  @@unique([tournamentId, sequence])
+  @@index([tournamentId, sequence])
+}
