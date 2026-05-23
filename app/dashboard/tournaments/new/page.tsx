@@ -187,6 +187,7 @@ export default function NewTournamentPage() {
     watch,
     setValue,
     getValues,
+    trigger,
     control,
     formState: { errors },
   } = useForm<FormValues>({
@@ -397,7 +398,10 @@ export default function NewTournamentPage() {
 
             <button
               type="button"
-              onClick={() => setStep(2)}
+              onClick={async () => {
+                const ok = await trigger(["name", "buyInAmount", "lateRegLevels"]);
+                if (ok) setStep(2);
+              }}
               className="w-full bg-green-600 hover:bg-green-500 text-white py-3 rounded-lg font-semibold transition-colors flex items-center justify-center gap-2"
             >
               Next: Blind Structure <ChevronRight size={16} />
@@ -547,6 +551,12 @@ export default function NewTournamentPage() {
                 </p>
               </div>
             </div>
+
+            {Object.keys(errors).length > 0 && (
+              <div className="bg-yellow-950 border border-yellow-800 rounded-lg px-4 py-3 text-yellow-300 text-sm">
+                Some required fields are missing. Go back to Step 1 and fill in all required fields.
+              </div>
+            )}
 
             {error && (
               <div className="bg-red-950 border border-red-800 rounded-lg px-4 py-3 text-red-300 text-sm">

@@ -1,6 +1,7 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { getRemainingSeconds } from "@/lib/clock";
+import { jsonResponse } from "@/lib/api";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(
@@ -51,5 +52,5 @@ export async function POST(
     },
   });
 
-  return NextResponse.json(updated);
+  return jsonResponse(updated);
 }

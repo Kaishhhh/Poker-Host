@@ -1,5 +1,6 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import { jsonResponse } from "@/lib/api";
 import { NextRequest, NextResponse } from "next/server";
 
 async function verifyOwner(tournamentId: string, userId: string) {
@@ -41,7 +42,7 @@ export async function GET(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  return NextResponse.json(tournament);
+  return jsonResponse(tournament);
 }
 
 export async function DELETE(

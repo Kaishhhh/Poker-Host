@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useClock } from "@/hooks/useClock";
+import { getRemainingSeconds } from "@/lib/clock";
 import type { BlindLevel } from "@/app/generated/prisma/client";
 
 interface Props {
@@ -30,6 +31,19 @@ export function TournamentClock({
   onUpdate,
 }: Props) {
   const advancingRef = useRef(false);
+  const [optimisticPaused, setOptimisticPaused] = useState<boolean | null>(null);
+  const [optimisticPausedSeconds, setOptimisticPausedSeconds] = useState<number | null>(null);
+  const effectivePaused = optimisticPaused !== null ? optimisticPaused : isPaused;
+  const effectivePausedSeconds =
+    optimisticPaused === true && optimisticPausedSeconds !== null
+      ? optimisticPausedSeconds
+      : pausedSecondsRemaining;
+
+  // Clear optimistic state once real server data catches up
+  useEffect(() => {
+    setOptimisticPaused(null);
+    setOptimisticPausedSeconds(null);
+  }, [isPaused]);
 
   const handleExpire = useCallback(async () => {
     if (advancingRef.current) return;
@@ -49,19 +63,30 @@ export function TournamentClock({
 
   const { display, isWarning, isExpired } = useClock({
     levelStartedAt,
-    isPaused,
-    pausedSecondsRemaining,
+    isPaused: effectivePaused,
+    pausedSecondsRemaining: effectivePausedSeconds,
     durationMinutes: currentLevel?.durationMinutes ?? 20,
     serverTime,
     onExpire: handleExpire,
   });
 
   async function handlePause() {
+    const snapshot = Math.ceil(
+      getRemainingSeconds({
+        levelStartedAt: levelStartedAt !== null ? BigInt(levelStartedAt) : null,
+        isPaused: false,
+        pausedSecondsRemaining: null,
+        durationMinutes: currentLevel?.durationMinutes ?? 20,
+      })
+    );
+    setOptimisticPausedSeconds(snapshot);
+    setOptimisticPaused(true);
     await fetch(`/api/tournaments/${tournamentId}/pause`, { method: "POST" });
     onUpdate?.();
   }
 
   async function handleResume() {
+    setOptimisticPaused(false);
     await fetch(`/api/tournaments/${tournamentId}/resume`, { method: "POST" });
     onUpdate?.();
   }
@@ -100,7 +125,7 @@ export function TournamentClock({
             ? "text-red-400"
             : isWarning
             ? "text-yellow-400"
-            : isPaused
+            : effectivePaused
             ? "text-zinc-500"
             : "text-white"
         }`}
@@ -145,7 +170,7 @@ export function TournamentClock({
             </button>
           ) : isRunning ? (
             <>
-              {isPaused ? (
+              {effectivePaused ? (
                 <button
                   onClick={handleResume}
                   className="px-5 py-2 bg-green-600 hover:bg-green-500 rounded-lg font-medium transition-colors"

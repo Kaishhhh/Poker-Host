@@ -1,5 +1,6 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import { jsonResponse } from "@/lib/api";
 import { NextRequest, NextResponse } from "next/server";
 import { logAction } from "@/lib/actions";
 import { z } from "zod";
@@ -36,7 +37,7 @@ export async function POST(
 
   // Idempotency guard: if level already advanced, return current state
   if (tournament.currentLevelIndex !== parsed.data.currentLevelIndex) {
-    return NextResponse.json(tournament, { status: 200 });
+    return jsonResponse(tournament);
   }
 
   const nextIndex = tournament.currentLevelIndex + 1;
@@ -47,7 +48,7 @@ export async function POST(
       where: { id },
       data: { status: "COMPLETE", completedAt: new Date() },
     });
-    return NextResponse.json(updated);
+    return jsonResponse(updated);
   }
 
   const nextLevel = tournament.blindLevels[nextIndex];
@@ -70,5 +71,5 @@ export async function POST(
     },
   });
 
-  return NextResponse.json(updated);
+  return jsonResponse(updated);
 }

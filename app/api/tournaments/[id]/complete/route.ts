@@ -1,5 +1,6 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import { jsonResponse } from "@/lib/api";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(
@@ -19,7 +20,7 @@ export async function POST(
   }
 
   if (tournament.status === "COMPLETE") {
-    return NextResponse.json(tournament);
+    return jsonResponse(tournament);
   }
 
   const updated = await prisma.tournament.update({
@@ -27,5 +28,5 @@ export async function POST(
     data: { status: "COMPLETE", completedAt: new Date() },
   });
 
-  return NextResponse.json(updated);
+  return jsonResponse(updated);
 }
